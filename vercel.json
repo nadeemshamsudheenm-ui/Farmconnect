@@ -1,0 +1,10 @@
+{
+  "outputDirectory": "src/main/resources/static",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
