@@ -2179,6 +2179,60 @@ pre {
     text-decoration: underline;
 }
 
+.guest-marketplace-banner {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.08));
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    border-radius: var(--radius-md);
+    padding: 0.95rem 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.08);
+    animation: fadeIn 0.3s ease;
+}
+
+.guest-banner-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+
+.guest-banner-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+
+.guest-banner-text {
+    font-size: 0.92rem;
+    color: var(--text-main);
+    line-height: 1.5;
+}
+
+.guest-banner-text a {
+    color: var(--primary);
+    text-decoration: underline;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.guest-banner-text a:hover {
+    color: var(--primary-dark);
+}
+
+.nav-guest-auth-btn {
+    padding: 0.45rem 1rem !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    border-radius: var(--radius-sm) !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.nav-guest-auth-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+}
+
 /* ==========================================================================
    BOTTOM CENTER LANGUAGE SELECTION OPTION
    ========================================================================== */

@@ -125,7 +125,7 @@
                         </div>
                     </div>
 
-                    <div class="guest-explore-row">
+                    <div class="guest-explore-row" id="guest-explore-row" style="display: none;">
                         <a href="#" id="link-explore-guest" class="guest-link">🌱 Explore Marketplace Without Logging In →</a>
                     </div>
                 </form>
@@ -196,6 +196,10 @@
                     <div class="auth-buttons-stack">
                         <button type="submit" class="btn btn-primary btn-block btn-auth-submit" id="btn-submit-register">Complete Registration</button>
                         <button type="button" class="btn btn-outline btn-block" id="btn-back-to-login">Back to Login</button>
+                    </div>
+
+                    <div class="guest-explore-row" id="guest-explore-reg-row" style="display: none;">
+                        <a href="#" id="link-explore-guest-reg" class="guest-link">🌱 Explore Marketplace Without Logging In →</a>
                     </div>
                 </form>
             </div>
@@ -268,6 +272,11 @@
                     <button id="cart-toggle-btn" class="cart-btn" aria-label="View Shopping Cart">
                         <span class="cart-icon">🛍️</span>
                         <span class="cart-badge" id="cart-count">0</span>
+                    </button>
+
+                    <!-- Guest Sign In / Register Prompt Button -->
+                    <button type="button" class="btn btn-primary btn-sm nav-guest-auth-btn" id="nav-guest-signin-btn" style="display: none;">
+                        🔑 Sign In / Register
                     </button>
 
                     <!-- Top-Right USER Button in Main Navbar -->
@@ -345,6 +354,16 @@
                     <div class="search-box">
                         <span class="search-icon">🔍</span>
                         <input type="text" id="catalog-search-input" placeholder="Search produce, e.g. Mango, Tomato, Apple..." />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guest Mode Notice Banner -->
+            <div id="guest-marketplace-banner" class="guest-marketplace-banner" style="display: none;">
+                <div class="guest-banner-inner">
+                    <span class="guest-banner-icon">👀</span>
+                    <div class="guest-banner-text">
+                        <strong>Browsing as Guest:</strong> You are exploring live direct farm listings. If you want to purchase fresh produce, please <a href="#" id="link-guest-banner-login"><strong>Sign In</strong></a> or <a href="#" id="link-guest-banner-register"><strong>Register a Buyer Account</strong></a>.
                     </div>
                 </div>
             </div>
@@ -867,6 +886,36 @@
                 <div class="modal-actions">
                     <button type="button" class="btn btn-outline close-modal-btn" data-modal="otp-verification-modal">Cancel</button>
                     <button type="button" class="btn btn-primary" id="btn-confirm-otp-submit">Verify Phone Number</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================================================== -->
+    <!-- MODAL: GUEST AUTH REQUIRED TO PURCHASE               -->
+    <!-- ==================================================== -->
+    <div id="guest-auth-modal" class="modal-overlay">
+        <div class="modal-box modal-box-sm">
+            <div class="modal-header">
+                <h3>🛒 Sign In Required to Buy</h3>
+                <button type="button" class="close-modal-btn" data-modal="guest-auth-modal">&times;</button>
+            </div>
+            <div class="modal-body-content" style="text-align: center; padding: 1.25rem 0.5rem;">
+                <div style="font-size: 2.8rem; margin-bottom: 0.75rem;">🌾🔐</div>
+                <h4 style="margin-bottom: 0.5rem; color: var(--text-main); font-size: 1.15rem;">Account Required to Purchase</h4>
+                <p id="guest-auth-modal-msg" style="color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem;">
+                    You are exploring the marketplace in guest mode. To place direct farm orders and buy fresh produce, please sign in or create a buyer account.
+                </p>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <button type="button" class="btn btn-primary btn-block" id="btn-guest-modal-login" style="padding: 0.75rem;">
+                        🔑 Sign In to Existing Account
+                    </button>
+                    <button type="button" class="btn btn-outline btn-block" id="btn-guest-modal-register" style="padding: 0.75rem;">
+                        📝 Register New Buyer Account
+                    </button>
+                    <button type="button" class="btn btn-text close-modal-btn" data-modal="guest-auth-modal" style="margin-top: 0.25rem; font-size: 0.85rem; color: var(--text-muted);">
+                        Continue Browsing as Guest
+                    </button>
                 </div>
             </div>
         </div>
