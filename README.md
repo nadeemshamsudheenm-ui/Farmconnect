@@ -27,7 +27,7 @@ FarmConnect is a full-stack Spring Boot web application designed for agricultura
 ## 🛠️ Technology Stack
 
 - **Backend**: Java 17, Spring Boot 3.2.5 (Spring MVC, Spring Data JPA, Validation API)
-- **Database**: H2 In-Memory Database (with H2 Web Console)
+- **Database**: MySQL 8.0+ / MariaDB (Production & Local) with In-Memory H2 fallback profile
 - **Frontend**: Vanilla HTML5, CSS3 (Modern Glassmorphic UI), JavaScript (Single Page Architecture)
 - **Build Tool**: Apache Maven 3.9+
 - **Testing**: JUnit 5, Spring Boot Starter Test (Integration and Unit Tests)
@@ -39,7 +39,28 @@ FarmConnect is a full-stack Spring Boot web application designed for agricultura
 ### Prerequisites
 - Java Development Kit (JDK) 17 or higher
 - Apache Maven 3.8+ (or Maven wrapper)
+- MySQL Server 8.0+ or MariaDB (optional if running with H2 profile)
 - Git
+
+### Database Configuration (MySQL)
+
+1. **Option A: Automatic Schema Initialization via Spring Boot**
+   When you run the application with MySQL connected, Spring Boot Data JPA automatically creates/updates all tables in `farmconnect_db` and seeds initial accounts and catalog items on startup (`createDatabaseIfNotExist=true`).
+
+2. **Option B: Manual Script Execution**
+   You can also run the provided complete SQL script [`farmconnect_mysql_schema.sql`](file:///c:/Users/USER/Documents/OOP%20PROJECT%20S3/farmconnect_mysql_schema.sql):
+   ```bash
+   mysql -u root -p < farmconnect_mysql_schema.sql
+   ```
+   Or open and execute `farmconnect_mysql_schema.sql` inside **MySQL Workbench**, **phpMyAdmin**, or **DBeaver**.
+
+3. **Database Connection Variables:**
+   You can customize your database credentials either in `src/main/resources/application.yml` or via environment variables:
+   - `MYSQL_HOST` (Default: `localhost`)
+   - `MYSQL_PORT` (Default: `3306`)
+   - `MYSQL_DB` (Default: `farmconnect_db`)
+   - `MYSQL_USER` (Default: `root`)
+   - `MYSQL_PASSWORD` (Default: `root`)
 
 ### Installation & Run
 
@@ -49,17 +70,23 @@ FarmConnect is a full-stack Spring Boot web application designed for agricultura
    cd Farmconnect
    ```
 
-2. **Build and Run:**
+2. **Run with MySQL (Default):**
    ```bash
-   mvn clean spring-boot:run
+   mvn spring-boot:run
+   ```
+   Or with custom credentials:
+   ```bash
+   mvn spring-boot:run -Dspring-boot.run.arguments="--MYSQL_USER=your_user --MYSQL_PASSWORD=your_password"
    ```
 
-3. **Access the Application:**
+3. **Run with H2 In-Memory Database (No MySQL required):**
+   ```bash
+   mvn spring-boot:run -Dspring-boot.run.profiles=h2
+   ```
+
+4. **Access the Application:**
    - **Web UI**: Open your browser at [http://localhost:8080](http://localhost:8080)
-   - **H2 Database Console**: Open [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
-     - JDBC URL: `jdbc:h2:mem:farmconnectdb`
-     - Username: `sa`
-     - Password: *(leave empty)*
+   - **H2 Database Console** *(when using `--spring.profiles.active=h2`)*: Open [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
 
 ---
 
