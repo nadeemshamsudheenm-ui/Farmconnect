@@ -63,3 +63,6 @@ out/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local MySQL Data Directory
+.mysql/
