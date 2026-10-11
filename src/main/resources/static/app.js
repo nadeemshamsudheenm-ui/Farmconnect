@@ -1146,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (tabFarmer) tabFarmer.style.display = (isFarmer || isAdmin) ? '' : 'none';
         if (tabMarketplace) tabMarketplace.style.display = (isBuyer || isAdmin) ? '' : 'none';
-        if (tabSupport) tabSupport.style.display = isAdmin ? '' : 'none';
+        if (tabSupport) tabSupport.style.display = (isFarmer || isAdmin) ? '' : 'none';
         if (tabPrivacy) tabPrivacy.style.display = isAdmin ? '' : 'none';
 
         // 2. Shopping Cart button isolation
@@ -1176,6 +1176,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isFarmer) {
             switchTab('farmer');
             loadFarmerDashboard(user.farmerProfileId || 1);
+            loadSupportTickets();
+            loadFarmingTips();
         } else if (isBuyer) {
             switchTab('marketplace');
             loadPublicCatalog();
@@ -1408,6 +1410,14 @@ document.addEventListener('DOMContentLoaded', () => {
             askExpertModal.classList.add('open');
         });
 
+        const farmerAskAgronomistBtn = document.getElementById('farmer-ask-agronomist-btn');
+        if (farmerAskAgronomistBtn) {
+            farmerAskAgronomistBtn.addEventListener('click', () => {
+                switchTab('support');
+                askExpertModal.classList.add('open');
+            });
+        }
+
         askExpertForm.addEventListener('submit', handleAskExpertSubmit);
         expertReplyForm.addEventListener('submit', handleExpertReplySubmit);
 
@@ -1593,8 +1603,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Enforce role isolation guard
         if (state.currentUser) {
-            if (state.currentUser.role === 'FARMER' && tabName !== 'farmer') {
-                console.warn('Navigation blocked: Sellers are restricted to Farmer Portal.');
+            if (state.currentUser.role === 'FARMER' && tabName !== 'farmer' && tabName !== 'support') {
+                console.warn('Navigation blocked: Sellers are restricted to Farmer Portal and Cultivation Hub.');
                 return;
             }
             if (state.currentUser.role === 'BUYER' && tabName !== 'marketplace') {
@@ -1617,6 +1627,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loadBuyerOrders();
         } else if (tabName === 'support') {
             loadSupportTickets();
+            loadFarmingTips();
         } else if (tabName === 'privacy') {
             runPrivacyAudit();
         }
@@ -2630,7 +2641,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleAskExpertSubmit(e) {
         e.preventDefault();
         const persona = state.personas[state.activePersona];
-        const farmerId = state.currentUser?.farmerProfileId || (persona?.role === 'FARMER' ? persona.farmerId : 1);
+        const farmerId = state.currentUser?.farmerProfileId || state.currentUser?.userId || state.currentUser?.id || (persona?.role === 'FARMER' ? persona.farmerId : 1);
 
         const payload = {
             farmerId: farmerId,
