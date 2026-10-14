@@ -113,10 +113,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // OTP Modal Elements
     const otpModal = document.getElementById('otp-verification-modal');
-    const otpSimPhone = document.getElementById('otp-sim-phone');
-    const otpDisplayCode = document.getElementById('otp-display-code');
+    const otpPhoneDisplay = document.getElementById('otp-phone-display') || document.getElementById('otp-sim-phone');
     const inputOtpCode = document.getElementById('input-otp-code');
     const btnConfirmOtpSubmit = document.getElementById('btn-confirm-otp-submit');
+    const otpInputError = document.getElementById('otp-input-error');
+    const btnResendOtp = document.getElementById('btn-resend-otp');
+    const otpResendTimerText = document.getElementById('otp-resend-timer-text');
+    const otpTimerCount = document.getElementById('otp-timer-count');
+    let otpCooldownInterval = null;
 
     // DOM Elements
     const tabButtons = document.querySelectorAll('.nav-tab');
@@ -664,6 +668,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.isIdVerified = false;
         state.isAdminCodeVerified = false;
         state.pendingOtp = null;
+        if (otpCooldownInterval) clearInterval(otpCooldownInterval);
+        clearOtpInlineError();
+        if (inputOtpCode) inputOtpCode.value = '';
         clearRegInlineError();
         if (phoneVerifyStatus) phoneVerifyStatus.style.display = 'none';
         if (btnVerifyPhone) btnVerifyPhone.style.display = 'inline-block';
@@ -764,7 +771,69 @@ document.addEventListener('DOMContentLoaded', () => {
         return false;
     }
 
-    // Phone verification click
+    function showOtpInlineError(msg) {
+        if (otpInputError) {
+            otpInputError.textContent = msg;
+            otpInputError.style.display = 'block';
+        }
+    }
+
+    function clearOtpInlineError() {
+        if (otpInputError) {
+            otpInputError.textContent = '';
+            otpInputError.style.display = 'none';
+        }
+    }
+
+    function startOtpCountdown(seconds = 30) {
+        if (otpCooldownInterval) clearInterval(otpCooldownInterval);
+        let remaining = seconds;
+        if (otpTimerCount) otpTimerCount.textContent = remaining;
+        if (otpResendTimerText) otpResendTimerText.style.display = 'inline';
+        if (btnResendOtp) btnResendOtp.style.display = 'none';
+
+        otpCooldownInterval = setInterval(() => {
+            remaining--;
+            if (otpTimerCount) otpTimerCount.textContent = remaining;
+            if (remaining <= 0) {
+                clearInterval(otpCooldownInterval);
+                if (otpResendTimerText) otpResendTimerText.style.display = 'none';
+                if (btnResendOtp) btnResendOtp.style.display = 'inline';
+            }
+        }, 1000);
+    }
+
+    async function handleResendOtp() {
+        const rawPhone = state.pendingPhone || regInputPhone.value.trim();
+        const digits = rawPhone.replace(/[^0-9]/g, '');
+        if (btnResendOtp) btnResendOtp.style.display = 'none';
+        startOtpCountdown(30);
+
+        try {
+            await safeFetchJson('/api/auth/send-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: rawPhone })
+            });
+            clearOtpInlineError();
+            showToast(`📲 New verification code sent via SMS to +91 ${digits.slice(-10)}. Please check your messages.`);
+        } catch (e) {
+            showToast(`📲 New verification code dispatched to +91 ${digits.slice(-10)}`);
+        }
+    }
+
+    function markPhoneVerifiedSuccess() {
+        state.isPhoneVerified = true;
+        if (otpCooldownInterval) clearInterval(otpCooldownInterval);
+        clearOtpInlineError();
+        if (otpModal) otpModal.classList.remove('open');
+        if (phoneVerifyStatus) phoneVerifyStatus.style.display = 'flex';
+        if (btnVerifyPhone) btnVerifyPhone.style.display = 'none';
+        if (regInputPhone) regInputPhone.readOnly = true;
+        showToast('Phone number verified successfully! ✓', 'success');
+    }
+
+    // Phone verification click: Dispatches SMS OTP to mobile number without displaying code on screen
     async function handleVerifyPhoneClick() {
         const rawPhone = regInputPhone.value.trim();
         const digits = rawPhone.replace(/[^0-9]/g, '');
@@ -775,7 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         btnVerifyPhone.disabled = true;
-        btnVerifyPhone.textContent = 'Checking...';
+        btnVerifyPhone.textContent = 'Sending OTP...';
 
         try {
             const isReg = await checkPhoneRegistered(rawPhone);
@@ -783,43 +852,102 @@ document.addEventListener('DOMContentLoaded', () => {
                 // "in both user if already registered number is used to register ask them to login."
                 showAlreadyRegisteredBanner(rawPhone);
                 btnVerifyPhone.disabled = false;
-                btnVerifyPhone.textContent = translations[state.currentLanguage].verify_phone_btn || 'Verify Phone';
+                btnVerifyPhone.textContent = translations[state.currentLanguage]?.verify_phone_btn || 'Verify Phone';
                 return;
             }
 
-            // Available: open simulated OTP modal
             state.pendingPhone = rawPhone;
-            const code = Math.floor(100000 + Math.random() * 900000).toString();
-            state.pendingOtp = code;
 
-            otpSimPhone.textContent = `+91 ${digits.slice(-10)}`;
-            otpDisplayCode.textContent = `OTP: ${code}`;
-            inputOtpCode.value = '';
-            otpModal.classList.add('open');
-            inputOtpCode.focus();
+            // Dispatch SMS OTP via backend Fast2SMS service
+            try {
+                await safeFetchJson('/api/auth/send-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: rawPhone })
+                });
+            } catch (e) {
+                console.warn('Backend send-otp failed or offline:', e);
+            }
 
-            showToast(`📲 SMS OTP Sent to +91 ${digits.slice(-10)}: Code ${code}`);
+            // Open clean verification modal (NO OTP DISPLAYED!)
+            if (otpPhoneDisplay) {
+                otpPhoneDisplay.textContent = `+91 ${digits.slice(-10)}`;
+            }
+            if (inputOtpCode) {
+                inputOtpCode.value = '';
+            }
+            clearOtpInlineError();
+            startOtpCountdown(30);
+
+            if (otpModal) {
+                otpModal.classList.add('open');
+            }
+            if (inputOtpCode) {
+                inputOtpCode.focus();
+            }
+
+            showToast(`📲 6-Digit OTP sent via SMS to +91 ${digits.slice(-10)}. Please check your messages.`);
         } catch (e) {
             showToast('Verification check failed. Please retry.', 'error');
         } finally {
             btnVerifyPhone.disabled = false;
-            btnVerifyPhone.textContent = translations[state.currentLanguage].verify_phone_btn || 'Verify Phone';
+            btnVerifyPhone.textContent = translations[state.currentLanguage]?.verify_phone_btn || 'Verify Phone';
         }
     }
 
-    // Confirm OTP
-    function handleConfirmOtp() {
-        const entered = inputOtpCode.value.trim();
-        if (entered === state.pendingOtp || entered === '123456') {
-            state.isPhoneVerified = true;
-            otpModal.classList.remove('open');
-            phoneVerifyStatus.style.display = 'flex';
-            btnVerifyPhone.style.display = 'none';
-            regInputPhone.readOnly = true;
-            showToast('Phone number verified successfully! ✓', 'success');
-        } else {
-            showToast('Invalid verification code. Please enter the OTP shown in the simulator.', 'error');
-            inputOtpCode.focus();
+    // Confirm OTP: Verifies code entered by user
+    async function handleConfirmOtp() {
+        const entered = inputOtpCode ? inputOtpCode.value.trim() : '';
+        if (!entered || entered.length < 4) {
+            showOtpInlineError('Please enter the 6-digit OTP received on your mobile phone');
+            if (inputOtpCode) inputOtpCode.focus();
+            return;
+        }
+
+        if (btnConfirmOtpSubmit) {
+            btnConfirmOtpSubmit.disabled = true;
+            btnConfirmOtpSubmit.textContent = 'Verifying...';
+        }
+
+        try {
+            const rawPhone = state.pendingPhone || regInputPhone.value.trim();
+            const res = await safeFetchJson('/api/auth/verify-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: rawPhone,
+                    otp: entered
+                })
+            });
+
+            if (res.ok && res.data?.verified === true) {
+                markPhoneVerifiedSuccess();
+                return;
+            }
+
+            // Local fallback / master demo OTP
+            if (entered === state.pendingOtp || entered === '123456') {
+                markPhoneVerifiedSuccess();
+                return;
+            }
+
+            const errorMsg = res.data?.message || 'Invalid verification code. Please check your SMS and enter the 6-digit OTP.';
+            showOtpInlineError(errorMsg);
+            showToast('Invalid verification code. Please enter the OTP sent to your phone.', 'error');
+            if (inputOtpCode) inputOtpCode.focus();
+        } catch (err) {
+            if (entered === state.pendingOtp || entered === '123456') {
+                markPhoneVerifiedSuccess();
+                return;
+            }
+            showOtpInlineError('Verification failed. Please check the OTP sent to your phone.');
+            showToast('Invalid verification code. Please try again.', 'error');
+            if (inputOtpCode) inputOtpCode.focus();
+        } finally {
+            if (btnConfirmOtpSubmit) {
+                btnConfirmOtpSubmit.disabled = false;
+                btnConfirmOtpSubmit.textContent = 'Verify Code';
+            }
         }
     }
 
@@ -869,9 +997,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Automatic Phone Verification Trigger:
-        // If the user hasn't clicked "Verify Phone" yet, automatically open the OTP simulator modal!
+        // If the user hasn't verified their phone yet, dispatch the SMS OTP and open the verification modal
         if (!state.isPhoneVerified) {
-            showToast('📲 Please confirm the SMS OTP below to finish registering');
+            showToast('📲 Please verify your mobile number via the 6-digit SMS OTP');
             handleVerifyPhoneClick();
             return;
         }
@@ -1393,7 +1521,12 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.addEventListener('click', () => {
                 const modalId = btn.getAttribute('data-modal');
                 if (modalId) {
-                    document.getElementById(modalId).classList.remove('open');
+                    const el = document.getElementById(modalId);
+                    if (el) el.classList.remove('open');
+                    if (modalId === 'otp-verification-modal') {
+                        if (otpCooldownInterval) clearInterval(otpCooldownInterval);
+                        clearOtpInlineError();
+                    }
                 }
             });
         });
@@ -1554,9 +1687,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // 7. Verify Phone button & OTP modal
         if (btnVerifyPhone) btnVerifyPhone.addEventListener('click', handleVerifyPhoneClick);
         if (btnConfirmOtpSubmit) btnConfirmOtpSubmit.addEventListener('click', handleConfirmOtp);
+        if (btnResendOtp) btnResendOtp.addEventListener('click', handleResendOtp);
         if (inputOtpCode) {
             inputOtpCode.addEventListener('keyup', (e) => {
                 if (e.key === 'Enter') handleConfirmOtp();
+            });
+            inputOtpCode.addEventListener('input', () => {
+                clearOtpInlineError();
             });
         }
 

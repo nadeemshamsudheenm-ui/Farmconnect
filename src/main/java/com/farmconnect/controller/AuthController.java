@@ -5,7 +5,10 @@ import com.farmconnect.dto.AuthResponse;
 import com.farmconnect.dto.BuyerRegistrationRequest;
 import com.farmconnect.dto.FarmerRegistrationRequest;
 import com.farmconnect.dto.LoginRequest;
+import com.farmconnect.dto.SendOtpRequest;
+import com.farmconnect.dto.VerifyOtpRequest;
 import com.farmconnect.service.AuthService;
+import com.farmconnect.service.OtpService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +19,39 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final OtpService otpService;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, OtpService otpService) {
         this.authService = authService;
+        this.otpService = otpService;
+    }
+
+    @PostMapping("/send-otp")
+    public ResponseEntity<java.util.Map<String, Object>> sendOtp(@Valid @RequestBody SendOtpRequest request) {
+        String cleanPhone = otpService.sendOtp(request.getPhone());
+        return ResponseEntity.ok(java.util.Map.of(
+                "success", true,
+                "phone", cleanPhone,
+                "message", "A 6-digit verification code has been sent via SMS to +91 " + cleanPhone
+        ));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<java.util.Map<String, Object>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        boolean verified = otpService.verifyOtp(request.getPhone(), request.getOtp());
+        if (verified) {
+            return ResponseEntity.ok(java.util.Map.of(
+                    "success", true,
+                    "verified", true,
+                    "message", "Phone number verified successfully."
+            ));
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Map.of(
+                    "success", false,
+                    "verified", false,
+                    "message", "Invalid or expired verification code. Please check your SMS and try again."
+            ));
+        }
     }
 
     @PostMapping("/register/farmer")

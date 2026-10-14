@@ -25,3 +25,6 @@ farmconnect:
     default-contact-gateway: "support@farmconnect.internal"
   security:
     admin-registration-code: "FC-ADMIN-2026"
+  sms:
+    enabled: true
+    fast2sms-api-key: ${FAST2SMS_API_KEY:k3w4yv72oJpnWQNZALEG8jePO9axlr6ishRHgUB5zXDcYITFVb2dhUZn9R54TMwGLeBglc8S16IFYi0t}
