@@ -888,6 +888,9 @@
                     <p class="otp-info-subtext">Please check your messages and enter the OTP below to verify your phone number.</p>
                 </div>
 
+                <!-- Gateway Status / Fallback Notice (Only shown if SMS gateway is locked or offline) -->
+                <div id="otp-gateway-warning" class="otp-gateway-warning" style="display: none;"></div>
+
                 <div class="form-group" style="margin-top: 1.25rem;">
                     <label for="input-otp-code">Enter 6-Digit SMS Code</label>
                     <input type="text" id="input-otp-code" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="• • • • • •" class="otp-digit-input" autocomplete="one-time-code" />

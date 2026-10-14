@@ -2430,6 +2430,22 @@ pre {
     color: #4b5563;
 }
 
+.otp-gateway-warning {
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+    color: #92400e;
+    font-size: 0.82rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: var(--radius-md);
+    margin-top: 0.85rem;
+    text-align: left;
+    line-height: 1.45;
+}
+
+.otp-gateway-warning strong {
+    color: #78350f;
+}
+
 .otp-digit-input {
     letter-spacing: 10px;
     font-size: 1.45rem !important;

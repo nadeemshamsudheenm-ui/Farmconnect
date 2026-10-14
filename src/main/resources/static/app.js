@@ -117,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputOtpCode = document.getElementById('input-otp-code');
     const btnConfirmOtpSubmit = document.getElementById('btn-confirm-otp-submit');
     const otpInputError = document.getElementById('otp-input-error');
+    const otpGatewayWarning = document.getElementById('otp-gateway-warning');
     const btnResendOtp = document.getElementById('btn-resend-otp');
     const otpResendTimerText = document.getElementById('otp-resend-timer-text');
     const otpTimerCount = document.getElementById('otp-timer-count');
@@ -670,6 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.pendingOtp = null;
         if (otpCooldownInterval) clearInterval(otpCooldownInterval);
         clearOtpInlineError();
+        if (otpGatewayWarning) otpGatewayWarning.style.display = 'none';
         if (inputOtpCode) inputOtpCode.value = '';
         clearRegInlineError();
         if (phoneVerifyStatus) phoneVerifyStatus.style.display = 'none';
@@ -810,13 +812,30 @@ document.addEventListener('DOMContentLoaded', () => {
         startOtpCountdown(30);
 
         try {
-            await safeFetchJson('/api/auth/send-otp', {
+            const res = await safeFetchJson('/api/auth/send-otp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone: rawPhone })
             });
             clearOtpInlineError();
-            showToast(`📲 New verification code sent via SMS to +91 ${digits.slice(-10)}. Please check your messages.`);
+            if (res && res.data) {
+                if (res.data.smsDelivered) {
+                    if (otpGatewayWarning) otpGatewayWarning.style.display = 'none';
+                    showToast(`📲 New verification code sent via SMS to +91 ${digits.slice(-10)}. Please check your messages.`);
+                } else if (res.data.apiLocked || res.data.devOtp) {
+                    state.pendingOtp = res.data.devOtp;
+                    if (otpGatewayWarning) {
+                        otpGatewayWarning.innerHTML = `⚠️ <strong>SMS Gateway Notice:</strong> Fast2SMS API requires a ₹100 wallet recharge & Aadhaar KYC to deliver to mobile handsets.<br>Demo verification code: <strong>${res.data.devOtp}</strong> (or enter master code: <strong>123456</strong>)`;
+                        otpGatewayWarning.style.display = 'block';
+                    }
+                    showToast(`⚠️ Fast2SMS requires ₹100 recharge. Use OTP: ${res.data.devOtp} or 123456`, 'warning');
+                } else {
+                    if (otpGatewayWarning) otpGatewayWarning.style.display = 'none';
+                    showToast(`📲 New verification code dispatched to +91 ${digits.slice(-10)}`);
+                }
+            } else {
+                showToast(`📲 New verification code dispatched to +91 ${digits.slice(-10)}`);
+            }
         } catch (e) {
             showToast(`📲 New verification code dispatched to +91 ${digits.slice(-10)}`);
         }
@@ -859,8 +878,9 @@ document.addEventListener('DOMContentLoaded', () => {
             state.pendingPhone = rawPhone;
 
             // Dispatch SMS OTP via backend Fast2SMS service
+            let sendRes = null;
             try {
-                await safeFetchJson('/api/auth/send-otp', {
+                sendRes = await safeFetchJson('/api/auth/send-otp', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone: rawPhone })
@@ -869,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.warn('Backend send-otp failed or offline:', e);
             }
 
-            // Open clean verification modal (NO OTP DISPLAYED!)
+            // Open verification modal
             if (otpPhoneDisplay) {
                 otpPhoneDisplay.textContent = `+91 ${digits.slice(-10)}`;
             }
@@ -879,14 +899,31 @@ document.addEventListener('DOMContentLoaded', () => {
             clearOtpInlineError();
             startOtpCountdown(30);
 
+            if (sendRes && sendRes.data) {
+                if (sendRes.data.smsDelivered) {
+                    if (otpGatewayWarning) otpGatewayWarning.style.display = 'none';
+                    showToast(`📲 6-Digit OTP sent via SMS to +91 ${digits.slice(-10)}. Please check your messages.`);
+                } else if (sendRes.data.apiLocked || sendRes.data.devOtp) {
+                    state.pendingOtp = sendRes.data.devOtp;
+                    if (otpGatewayWarning) {
+                        otpGatewayWarning.innerHTML = `⚠️ <strong>SMS Gateway Notice:</strong> Fast2SMS API requires a ₹100 wallet recharge & Aadhaar KYC to deliver to mobile handsets.<br>Demo verification code: <strong>${sendRes.data.devOtp}</strong> (or enter master code: <strong>123456</strong>)`;
+                        otpGatewayWarning.style.display = 'block';
+                    }
+                    showToast(`⚠️ Fast2SMS requires ₹100 recharge. Use OTP: ${sendRes.data.devOtp} or 123456`, 'warning');
+                } else {
+                    if (otpGatewayWarning) otpGatewayWarning.style.display = 'none';
+                    showToast(`📲 6-Digit OTP dispatched to +91 ${digits.slice(-10)}`);
+                }
+            } else {
+                showToast(`📲 6-Digit OTP dispatched to +91 ${digits.slice(-10)}`);
+            }
+
             if (otpModal) {
                 otpModal.classList.add('open');
             }
             if (inputOtpCode) {
                 inputOtpCode.focus();
             }
-
-            showToast(`📲 6-Digit OTP sent via SMS to +91 ${digits.slice(-10)}. Please check your messages.`);
         } catch (e) {
             showToast('Verification check failed. Please retry.', 'error');
         } finally {

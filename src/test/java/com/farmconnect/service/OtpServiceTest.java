@@ -20,8 +20,8 @@ class OtpServiceTest {
     @Test
     @DisplayName("sendOtp should normalize 10-digit Indian mobile number")
     void testSendOtpNormalizesPhone() {
-        String clean = otpService.sendOtp("+91 98765 43210");
-        assertEquals("9876543210", clean);
+        OtpService.OtpSendResult result = otpService.sendOtp("+91 98765 43210");
+        assertEquals("9876543210", result.getPhone());
     }
 
     @Test

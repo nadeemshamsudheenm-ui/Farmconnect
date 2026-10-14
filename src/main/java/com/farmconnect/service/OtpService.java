@@ -44,13 +44,49 @@ public class OtpService {
         }
     }
 
+    public static class OtpSendResult {
+        private final String phone;
+        private final String otpCode;
+        private final boolean smsDelivered;
+        private final boolean apiLocked;
+        private final String gatewayMessage;
+
+        public OtpSendResult(String phone, String otpCode, boolean smsDelivered, boolean apiLocked, String gatewayMessage) {
+            this.phone = phone;
+            this.otpCode = otpCode;
+            this.smsDelivered = smsDelivered;
+            this.apiLocked = apiLocked;
+            this.gatewayMessage = gatewayMessage;
+        }
+
+        public String getPhone() {
+            return phone;
+        }
+
+        public String getOtpCode() {
+            return otpCode;
+        }
+
+        public boolean isSmsDelivered() {
+            return smsDelivered;
+        }
+
+        public boolean isApiLocked() {
+            return apiLocked;
+        }
+
+        public String getGatewayMessage() {
+            return gatewayMessage;
+        }
+    }
+
     /**
      * Generates a 6-digit OTP, stores it with 10-minute validity, and sends it via Fast2SMS to the phone.
      *
      * @param rawPhone Mobile number
-     * @return normalized 10-digit phone number
+     * @return OtpSendResult containing phone, delivery status, and gateway lock info
      */
-    public String sendOtp(String rawPhone) {
+    public OtpSendResult sendOtp(String rawPhone) {
         String cleanPhone = normalizePhone(rawPhone);
         if (cleanPhone.length() != 10) {
             throw new IllegalArgumentException("Phone number must have at least 10 digits");
@@ -66,9 +102,15 @@ public class OtpService {
         log.info("Generated new 6-digit OTP for +91 {}. Valid until {}", cleanPhone, expiry);
 
         // Dispatch via Fast2SMS
-        smsService.sendSmsOtp(cleanPhone, otpCode);
+        SmsService.SmsDispatchResult result = smsService.sendSmsOtp(cleanPhone, otpCode);
 
-        return cleanPhone;
+        return new OtpSendResult(
+                cleanPhone,
+                otpCode,
+                result.isDelivered(),
+                result.isApiLocked(),
+                result.getMessage()
+        );
     }
 
     /**

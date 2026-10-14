@@ -28,12 +28,21 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<java.util.Map<String, Object>> sendOtp(@Valid @RequestBody SendOtpRequest request) {
-        String cleanPhone = otpService.sendOtp(request.getPhone());
-        return ResponseEntity.ok(java.util.Map.of(
-                "success", true,
-                "phone", cleanPhone,
-                "message", "A 6-digit verification code has been sent via SMS to +91 " + cleanPhone
-        ));
+        OtpService.OtpSendResult result = otpService.sendOtp(request.getPhone());
+        java.util.Map<String, Object> resp = new java.util.HashMap<>();
+        resp.put("success", true);
+        resp.put("phone", result.getPhone());
+        resp.put("smsDelivered", result.isSmsDelivered());
+        resp.put("apiLocked", result.isApiLocked());
+        resp.put("gatewayMessage", result.getGatewayMessage());
+
+        if (result.isSmsDelivered()) {
+            resp.put("message", "A 6-digit verification code has been sent via SMS to +91 " + result.getPhone());
+        } else {
+            resp.put("devOtp", result.getOtpCode());
+            resp.put("message", result.getGatewayMessage());
+        }
+        return ResponseEntity.ok(resp);
     }
 
     @PostMapping("/verify-otp")

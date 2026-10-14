@@ -30,24 +30,48 @@ public class SmsService {
                 .build();
     }
 
+    public static class SmsDispatchResult {
+        private final boolean delivered;
+        private final boolean apiLocked;
+        private final String message;
+
+        public SmsDispatchResult(boolean delivered, boolean apiLocked, String message) {
+            this.delivered = delivered;
+            this.apiLocked = apiLocked;
+            this.message = message;
+        }
+
+        public boolean isDelivered() {
+            return delivered;
+        }
+
+        public boolean isApiLocked() {
+            return apiLocked;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
+
     /**
      * Dispatches a 6-digit OTP to the specified 10-digit Indian phone number via Fast2SMS.
-     * If no API key is provided, logs the OTP securely to the server console.
+     * Checks for gateway response, detecting if the API route is locked by Fast2SMS KYC/recharge policy.
      *
      * @param phone 10-digit clean mobile number
      * @param otp 6-digit OTP code
-     * @return true if dispatched or simulated successfully
+     * @return SmsDispatchResult indicating real delivery status, lock reason, or simulation
      */
-    public boolean sendSmsOtp(String phone, String otp) {
+    public SmsDispatchResult sendSmsOtp(String phone, String otp) {
         if (!smsEnabled) {
             log.info("[SMS GATEWAY] SMS sending is disabled in configuration.");
-            return false;
+            return new SmsDispatchResult(false, false, "SMS sending disabled in configuration.");
         }
 
         String cleanPhone = normalizePhone(phone);
         if (cleanPhone.length() != 10) {
             log.warn("[SMS GATEWAY] Invalid phone number provided for SMS: {}", phone);
-            return false;
+            return new SmsDispatchResult(false, false, "Invalid 10-digit mobile number.");
         }
 
         String apiKey = fast2smsApiKey != null ? fast2smsApiKey.trim() : "";
@@ -74,7 +98,14 @@ public class SmsService {
 
                 if (response.statusCode() == 200 && response.body().contains("\"return\":true")) {
                     log.info("✓ [Fast2SMS] Real SMS OTP delivered successfully to +91 {}. Response: {}", cleanPhone, response.body());
-                    return true;
+                    return new SmsDispatchResult(true, false, "SMS delivered successfully to handset.");
+                }
+
+                // Check specifically for Fast2SMS Error 999: 100 INR recharge requirement
+                if (response.body().contains("\"status_code\":999") || response.body().contains("100 INR")) {
+                    log.warn("⚠️ [Fast2SMS] API Route Locked: Fast2SMS requires a ₹100 recharge + KYC on fast2sms.com to unlock external API dispatch.");
+                    log.info("   [Fallback Log] Verification OTP for +91 {} is: {}", cleanPhone, otp);
+                    return new SmsDispatchResult(false, true, "Fast2SMS API route locked: Fast2SMS requires a minimum ₹100 wallet recharge and Aadhaar KYC to deliver SMS to physical handsets.");
                 }
 
                 // Fallback attempt via Fast2SMS GET OTP route
@@ -94,16 +125,23 @@ public class SmsService {
                 HttpResponse<String> getRes = httpClient.send(getReq, HttpResponse.BodyHandlers.ofString());
                 if (getRes.statusCode() == 200 && getRes.body().contains("\"return\":true")) {
                     log.info("✓ [Fast2SMS] Real SMS OTP delivered successfully via GET to +91 {}. Response: {}", cleanPhone, getRes.body());
-                    return true;
-                } else {
-                    log.warn("⚠️ [Fast2SMS] Fast2SMS API response: {}", getRes.body());
-                    log.info("   [Fallback Log] Verification OTP for +91 {} is: {}", cleanPhone, otp);
-                    return true;
+                    return new SmsDispatchResult(true, false, "SMS delivered successfully to handset.");
                 }
+
+                if (getRes.body().contains("\"status_code\":999") || getRes.body().contains("100 INR")) {
+                    log.warn("⚠️ [Fast2SMS] API Route Locked: Fast2SMS requires a ₹100 recharge + KYC.");
+                    log.info("   [Fallback Log] Verification OTP for +91 {} is: {}", cleanPhone, otp);
+                    return new SmsDispatchResult(false, true, "Fast2SMS API route locked: Fast2SMS requires a minimum ₹100 wallet recharge and Aadhaar KYC to deliver SMS to physical handsets.");
+                }
+
+                log.warn("⚠️ [Fast2SMS] Fast2SMS API response: {}", getRes.body());
+                log.info("   [Fallback Log] Verification OTP for +91 {} is: {}", cleanPhone, otp);
+                return new SmsDispatchResult(false, false, "Fast2SMS gateway returned error: " + getRes.body());
+
             } catch (Exception e) {
                 log.error("❌ [Fast2SMS] Failed to send SMS via Fast2SMS gateway: {}", e.getMessage());
                 log.info("   [Fallback Log] Verification OTP for +91 {} is: {}", cleanPhone, otp);
-                return true;
+                return new SmsDispatchResult(false, false, "Fast2SMS connection error: " + e.getMessage());
             }
         } else {
             // No Fast2SMS API key configured: log to backend console
@@ -115,7 +153,7 @@ public class SmsService {
             log.info("   [Notice] To deliver real SMS to physical mobile phones, add your Fast2SMS");
             log.info("   API key in application.yml (farmconnect.sms.fast2sms-api-key) or FAST2SMS_API_KEY.");
             log.info("==========================================================================");
-            return true;
+            return new SmsDispatchResult(false, false, "Fast2SMS API key not set. Using local development OTP.");
         }
     }
 
